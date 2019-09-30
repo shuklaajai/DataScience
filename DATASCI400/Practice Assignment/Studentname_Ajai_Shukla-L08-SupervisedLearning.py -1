@@ -1,0 +1,374 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Feb 26 00:48:02 2019
+
+@author: ashukla
+
+"""
+Data Information:
+ Mammography is the most effective method for breast cancer screening
+    available today. However, the low positive predictive value of breast
+    biopsy resulting from mammogram interpretation leads to approximately
+    70% unnecessary biopsies with benign outcomes. To reduce the high
+    number of unnecessary breast biopsies, several computer-aided diagnosis
+    (CAD) systems have been proposed in the last years.These systems
+    help physicians in their decision to perform a breast biopsy on a suspicious
+    lesion seen in a mammogram or to perform a short term follow-up
+    examination instead.
+    This data set can be used to predict the severity (benign or malignant)
+    of a mammographic mass lesion from BI-RADS attributes and the patient's age.
+    It contains a BI-RADS assessment, the patient's age and three BI-RADS attributes
+    together with the ground truth (the severity field) for 516 benign and
+    445 malignant masses that have been identified on full field digital mammograms
+    collected at the Institute of Radiology of the
+    University Erlangen-Nuremberg between 2003 and 2006.
+    Each instance has an associated BI-RADS assessment ranging from 1 (definitely benign)
+    to 5 (highly suggestive of malignancy) assigned in a double-review process by
+    physicians. Assuming that all cases with BI-RADS assessments greater or equal
+    a given value (varying from 1 to 5), are malignant and the other cases benign,
+    sensitivities and associated specificities can be calculated. These can be an
+    indication of how well a CAD system performs compared to the radiologists
+    
+"""
+###################################################################################################################
+# Import statements for necessary package(s).
+###################################################################################################################
+import numpy as np
+import pandas as pd
+from sklearn import model_selection
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier 
+from sklearn.svm import SVC
+import itertools
+import matplotlib.pyplot as plt
+
+from sklearn import svm, datasets
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier 
+from copy import deepcopy
+
+# import package
+#################################################################################
+#3.Read in the dataset from a freely and easily available source on the internet.
+#################################################################################
+url = "http://archive.ics.uci.edu/ml/machine-learning-databases/mammographic-masses/mammographic_masses.data"
+Mamm = pd.read_csv(url, header=None) 
+Mamm.columns = ["BI-RADS", "Age", "Shape", "Margin", "Density", "Severity"]
+#################
+#4.Show data preparation. 
+# Check the data types
+Mamm.dtypes
+#################
+# Check the first rows of the data frame
+Mamm.head()
+#################
+# Check the unique values
+Mamm.loc[:, "Shape"].unique()
+##################
+#Normalize some numeric columns,
+#one-hot encode some categorical columns with 3 or more categories,
+#remove or replace missing values, remove or replace some outliers.
+##################################################################################################
+This data - This data is for elementry school kids.
+#######################################
+#Normalize some numeric columns
+x = np.array([1,11,5,3,15,3,5,9,7,9,3,5,7,3,5,21])
+print(" The original variable:", x)
+############
+offset = 0
+spread = 1
+xNormTrivial = (x - offset)/spread
+print(" Trivial normalization doesn't change values: ", xNormTrivial)
+############
+offset = min(x)
+spread = max(x) - min(x)
+xNormMinMax = (x - offset)/spread
+print(" The min-max-normalized variable:", xNormMinMax)
+offset = np.mean(x)
+spread = np.std(x)
+xNormZ = (x - offset)/spread
+print(" The Z-normalized variable:", xNormZ)
+
+# Compare the values before after the two normalizations
+print ("\nScaled variable x using numpy calculations\n")
+print(np.hstack(
+        (np.reshape(x,(16,1)),
+         np.reshape(xNormMinMax,(16,1)),
+         np.reshape(xNormZ, (16,1))
+        ))
+    )
+######################################################################################################
+#one-hot encode some categorical columns with 3 or more categories,
+######################################################################################################
+
+enc = OneHotEncoder(handle_unknown='ignore')
+X = [['Male', 1], ['Female', 3], ['Female', 2]]
+enc.fit(X)
+OneHotEncoder(categorical_features=None, categories=None,
+       n_values=None, sparse=True)
+print(OneHotEncoder)
+######################################################################################################
+#remove or replace missing values, remove or replace some outliers
+############################################################################################
+# Decode Shape
+Replace = Mamm.loc[:, "Shape"] == "1"
+Mamm.loc[Replace, "Shape"] = "round"
+
+Replace = Mamm.loc[:, "Shape"] == "2"
+Mamm.loc[Replace, "Shape"] = "oval"
+
+Replace = Mamm.loc[:, "Shape"] == "3"
+Mamm.loc[Replace, "Shape"] = "lobular"
+
+Replace = Mamm.loc[:, "Shape"] == "4"
+Mamm.loc[Replace, "Shape"] = "irregular"
+###################
+
+# Get the counts for each value
+Mamm.loc[:,"Shape"].value_counts()
+###################
+
+# Specify all the locations that have a missing value
+MissingValue = Mamm.loc[:, "Shape"] == "?"
+
+# Impute missing values
+Mamm.loc[MissingValue, "Shape"] = "irregular"
+###################
+
+# Decode Margin
+Replace = Mamm.loc[:, "Margin"] == "1"
+Mamm.loc[Replace, "Margin"] = "circumscribed"
+
+Replace = Mamm.loc[:, "Margin"] == "2"
+Mamm.loc[Replace, "Margin"] = "microlobulated"
+
+Replace = Mamm.loc[:, "Margin"] == "3"
+Mamm.loc[Replace, "Margin"] = "obscured"
+
+Replace = Mamm.loc[:, "Margin"] == "4"
+Mamm.loc[Replace, "Margin"] = "ill-defined"
+
+Replace = Mamm.loc[:, "Margin"] == "5"
+Mamm.loc[Replace, "Margin"] = "spiculated"
+###################
+
+# Get the counts for each value
+Mamm.loc[:,"Margin"].value_counts()
+
+# Specify all the locations that have a missing value
+MissingValue = Mamm.loc[:, "Margin"] == "?"
+
+# Impute missing values
+Mamm.loc[MissingValue, "Margin"] = "circumscribed"
+###################
+
+# Get the counts for each value
+Mamm.loc[:,"Shape"].value_counts()
+
+# Get the counts for each value
+Mamm.loc[:,"Margin"].value_counts()
+
+####################
+#Apply K-Means on some of your columns,  Add the K-Means cluster labels to your dataset.
+###################################################################
+    
+def kmeans(X, k, th):
+    if k < 2:
+        print('k needs to be at least 2!')
+        return
+    if (th <= 0.0) or (th >= 1.0):
+        print('th values are beyond meaningful bounds')
+        return    
+    
+    N, m = X.shape # dimensions of the dataset
+    Y = np.zeros(N, dtype=int) # cluster labels
+    C = np.random.uniform(0, 1, [k,m]) # centroids
+    d = th + 1.0
+    dist_to_centroid = np.zeros(k) # centroid distances
+    
+    while d > th:
+        C_ = deepcopy(C)
+        
+        for i in range(N): # assign cluster labels to all data points            
+            for j in range(k): 
+                dist_to_centroid[j] = np.sqrt(sum((X[i,] - C[j,])**2))                
+            Y[i] = np.argmin(dist_to_centroid) # assign to most similar cluster            
+            
+        for j in range(k): # recalculate all the centroids
+            ind = FindAll(Y, j) # indexes of data points in cluster j
+            n = len(ind)            
+            if n > 0: C[j] = sum(X[ind,]) / n
+        
+        d = np.mean(abs(C - C_)) # how much have the centroids shifted on average?
+        
+    return Y, C
+################################################################################################
+#Split your data set into training and testing sets using the proper function in sklearn (include decision comments).
+###############################################################################################################
+    ####################
+""" Auxiliary functions """
+def normalize(X): # max-min normalizing
+    N, m = X.shape
+    Y = np.zeros([N, m])
+    
+    for i in range(m):
+        mX = min(X[:,i])
+        Y[:,i] = (X[:,i] - mX) / (max(X[:,i]) - mX)
+    
+    return Y
+
+####################
+def split_dataset(data, r): # split a dataset in matrix format, using a given ratio for the testing set
+	N = len(data)	
+	X = []
+	Y = []
+	
+	if r >= 1: 
+		print ("Parameter r needs to be smaller than 1!")
+		return
+	elif r <= 0:
+		print ("Parameter r needs to be larger than 0!")
+		return
+
+	n = int(round(N*r)) # number of elements in testing sample
+	nt = N - n # number of elements in training sample
+	ind = -np.ones(n,int) # indexes for testing sample
+	R = np.random.randint(N) # some random index from the whole dataset
+	
+	for i in range(n):
+		while R in ind: R = np.random.randint(N) # ensure that the random index hasn't been used before
+		ind[i] = R
+
+	ind_ = list(set(range(N)).difference(ind)) # remaining indexes	
+	X = data[ind_,:-1] # training features
+	XX = data[ind,:-1] # testing features
+	Y = data[ind_,-1] # training targets
+	YY = data[ind,-1] # testing targests
+	return X, XX, Y, YY
+################################################################################################################
+#Create a classification model for the expert label based on the training data (include decision comments).
+ #########################################################################################################
+r = 0.2 # ratio of test data over all data (this can be changed to any number between 0.0 and 1.0 (not inclusive)
+dataset = np.genfromtxt ('https://library.startlearninglabs.uw.edu/DATASCI400/Datasets/iris.csv', delimiter=",")
+all_inputs = normalize(dataset[:,:4]) # inputs (features)
+normalized_data = deepcopy(dataset)
+normalized_data[:,:4] = all_inputs
+X, XX, Y, YY = split_dataset(normalized_data, r)
+print ('\n\n\nLogistic regression classifier\n')
+C_parameter = 50. / len(X) # parameter for regularization of the model
+class_parameter = 'ovr' # parameter for dealing with multiple classes
+penalty_parameter = 'l1' # parameter for the optimizer (solver) in the function
+solver_parameter = 'saga' # optimization system used
+tolerance_parameter = 0.1 # termination parameter
+
+#Training the Model
+clf = LogisticRegression(C=C_parameter, multi_class=class_parameter, penalty=penalty_parameter, solver=solver_parameter, tol=tolerance_parameter)
+clf.fit(X, Y) 
+print ('coefficients:')
+print (clf.coef_) # each row of this matrix corresponds to each one of the classes of the dataset
+print ('intercept:')
+print (clf.intercept_) # each element of this vector corresponds to each one of the classes of the dataset
+
+# Apply the Model
+print ('predictions for test set:')
+print (clf.predict(XX))
+print ('actual class values:')
+print (YY)   
+################################################
+#Apply your (trained) classifiers to the test data to predict probabilities.
+#####################################################
+#####################
+
+# Naive Bayes classifier
+print ('\n\nNaive Bayes classifier\n')
+nbc = GaussianNB() # default parameters are fine
+nbc.fit(X, Y)
+print ("predictions for test set:")
+print (nbc.predict(XX))
+print ('actual class values:')
+print (YY)
+####################
+
+# k Nearest Neighbors classifier
+print ('\n\nK nearest neighbors classifier\n')
+k = 5 # number of neighbors
+distance_metric = 'euclidean'
+knn = KNeighborsClassifier(n_neighbors=k, metric=distance_metric)
+knn.fit(X, Y)
+print ("predictions for test set:")
+print (knn.predict(XX))
+print ('actual class values:')
+print (YY)
+###################
+
+# Support vector machine classifier
+t = 0.001 # tolerance parameter
+kp = 'rbf' # kernel parameter
+print ('\n\nSupport Vector Machine classifier\n')
+clf = SVC(kernel=kp, tol=t)
+clf.fit(X, Y)
+print ("predictions for test set:")
+print (clf.predict(XX))
+print ('actual class values:')
+print (YY)
+####################
+
+# Decision Tree classifier
+print ('\n\nDecision Tree classifier\n')
+clf = DecisionTreeClassifier() # default parameters are fine
+clf.fit(X, Y)
+print ("predictions for test set:")
+print (clf.predict(XX))
+print ('actual class values:')
+print (YY)
+####################
+
+# Random Forest classifier
+estimators = 10 # number of trees parameter
+mss = 2 # mininum samples split parameter
+print ('\n\nRandom Forest classifier\n')
+clf = RandomForestClassifier(n_estimators=estimators, min_samples_split=mss) # default parameters are fine
+clf.fit(X, Y)
+print ("predictions for test set:")
+print (clf.predict(XX))
+print ('actual class values:')
+print (YY)
+##############################################################
+#Write out to a csv a dataframe of the test data, including actual outcomes, and the probabilities of your classification
+################################################################
+r = 0.1 # ratio of test data over all data (this can be changed to any number between 0.0 and 1.0 (not inclusive)
+dataset = np.genfromtxt ('https://library.startlearninglabs.uw.edu/DATASCI400/Datasets/OnlineNewsPopularity.csv', delimiter=",")
+dataset = dataset[1:,39:] # get rid of headers and first 38 columns
+all_inputs = normalize(dataset[:,:-1]) # inputs (features)
+normalized_data = deepcopy(dataset)
+normalized_data[:,:-1] = all_inputs
+X, XX, Y, YY = split_dataset(normalized_data, r)
+#####################################################################################
+#Determine accuracy rate, which is the number of correct predictions divided by the total number of predictions (include brief preliminary analysis commentary).
+#Find the overall accuracy of the outputs that we got by running a decision tree algorithm.To get the top five class labels for the active user input and get the accuracy for the X_train and Y_train dataset using accuracy_score().Suppose to get five top recommendation . To get the accuracy for each class labels and with the help of these, 
+the overall accuracy for the output.
+################################################
+
+# import some data to play with
+iris = datasets.load_iris()
+X = iris.data
+y = iris.target
+class_names = iris.target_names
+
+# Split the data into a training set and a test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
+# Run classifier, using a model that is too regularized (C too low) to see
+# the impact on the results
+classifier = svm.SVC(kernel='linear', C=0.01)
+y_pred = classifier.fit(X_train, y_train).predict(X_test)
+conf_mat = confusion_matrix(y_pred, y_test)
+acc = np.sum(conf_mat.diagonal()) / np.sum(conf_mat)
+print('Overall accuracy: {} %'.format(acc*100))
+##########################################################################################
